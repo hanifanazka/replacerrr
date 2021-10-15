@@ -8,13 +8,13 @@ const rename = require("gulp-rename");
 const through2 = require("through2");
 const es = require("event-stream");
 const csv = require("csv-parser");
-require('dotenv').config();
+require("dotenv").config();
 
 // Config here
 const config = {
-	templateFilePath: "src/certificate.svg",
-	dataFilePath: "src/data.csv"
-}
+    templateFilePath: "src/certificate.svg",
+    dataFilePath: "src/data.csv",
+};
 
 function parseCSV(filePath) {
     return new Promise((resolve) => {
@@ -28,27 +28,24 @@ function parseCSV(filePath) {
     });
 }
 
-function replaceTemplate(cb) {
-    parseCSV(config.dataFilePath).then((data) => {
-        let bundle;
+function replaceTemplate() {
+    return new Promise((resolve, reject) => {
+        parseCSV(config.dataFilePath).then((data) => {
+            let bundle;
 
-        data.forEach((data, i) => {
-            let task = src(config.templateFilePath).pipe(
-                rename(function (path) {
-                    path.basename += i;
-                })
-            );
-            Object.keys(data).forEach((key) => {
-                task = task.pipe(replace(key, data[key]));
+            data.forEach((data, i) => {
+                let task = src(config.templateFilePath).pipe(
+                    rename(function (path) {
+                        path.basename += i;
+                    })
+                );
+                Object.keys(data).forEach((key) => {
+                    task = task.pipe(replace(key, data[key]));
+                });
+                bundle = bundle ? es.merge(bundle, task) : task;
             });
-            bundle = bundle ? es.merge(bundle, task) : task;
+            bundle.pipe(dest("dist/")).on("end", () => resolve());
         });
-        bundle.pipe(dest("dist/")).pipe(
-            through2.obj((file, enc, cbb) => {
-                cb();
-                cbb(null, file);
-            })
-        );
     });
 }
 
