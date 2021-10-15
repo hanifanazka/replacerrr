@@ -23,6 +23,8 @@ The first row of csv is threated as header, the header is the find.
 Any row below that is the replace. 1 row will output 1 file.
 Unlimited column and row are possible.
 
+Operation is started from top-left to end of row, then next row till end.
+
 ## How use this
 
 Link the template and data file path at gulpfile.js to your file. Done.
