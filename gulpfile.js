@@ -68,7 +68,7 @@ function SVGtoPDF() {
                     `--export-filename='${path.join(
                         filePath.dir,
                         filePath.name
-                    )}'.pdf`,
+                    )}.pdf'`,
                 (err, stdout, stderr) => {
                     console.log("STDERR: ", stderr);
                 }
