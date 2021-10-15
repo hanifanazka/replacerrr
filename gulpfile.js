@@ -5,7 +5,6 @@ const path = require("path");
 const { src, dest, series } = require("gulp");
 const replace = require("gulp-replace");
 const rename = require("gulp-rename");
-const clone = require("gulp-clone");
 const through2 = require("through2");
 const es = require("event-stream");
 const csv = require("csv-parser");
@@ -31,11 +30,10 @@ function parseCSV(filePath) {
 
 function replaceTemplate(cb) {
     parseCSV(config.dataFilePath).then((data) => {
-        let template = src(config.templateFilePath);
         let bundle;
 
         data.forEach((data, i) => {
-            task = template.pipe(clone()).pipe(
+            let task = src(config.templateFilePath).pipe(
                 rename(function (path) {
                     path.basename += i;
                 })
