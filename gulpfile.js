@@ -54,7 +54,7 @@ function SVGtoPDF() {
         through2.obj((file, enc, cb) => {
             const filePath = path.parse(file.path);
             const proc = exec(
-                process.env.INKSCAPE_EXECUTEABLE +
+                (process.env.INKSCAPE_EXECUTEABLE || "inkscape") +
                     " '" +
                     file.path +
                     "' " +
