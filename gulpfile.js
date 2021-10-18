@@ -1,4 +1,4 @@
-const { exec } = require("child_process");
+const spawn = require("cross-spawn");
 const fs = require("fs");
 const del = require("del");
 const path = require("path");
@@ -60,22 +60,26 @@ function SVGtoPDF() {
 
         const convert = (filePath) =>
             new Promise((resolve, reject) => {
-                const proc = exec(
-                    (process.env.INKSCAPE_EXECUTEABLE || "inkscape") +
-                        " '" +
-                        filePath +
-                        "' " +
-                        "--export-area-page --batch-process --export-type=pdf" +
-                        " " +
-                        `--export-filename='${path.join(
+                const proc = spawn(
+                    (process.env.INKSCAPE_EXECUTEABLE || "inkscape"),
+                    [
+                        filePath,
+                        "--export-area-page",
+                        "--export-type=pdf",
+                        `--export-filename=${path.join(
                             path.parse(filePath).dir,
                             path.parse(filePath).name
-                        )}.pdf'`,
-                    (err, stdout, stderr) => {
-                        console.log("STDERR: ", stderr);
-                    }
+                        )}`,
+                    ]
                 );
-                proc.on("exit", () => resolve());
+                proc.on("close", () => resolve());
+                proc.stdout.on('data', (data) => {
+                    console.log(`stdout: ${data}`);
+                  });
+                  
+                  proc.stderr.on('data', (data) => {
+                    console.error(`stderr: ${data}`);
+                  });
             });
 
         const promiseProducer = () => {
@@ -88,28 +92,6 @@ function SVGtoPDF() {
 
         poolPromise.then(() => {resolve()});
     });
-/* 
-    src("dist/*.svg").pipe(
-        through2.obj((file, enc, cb) => {
-            const filePath = path.parse(file.path);
-            const proc = exec(
-                (process.env.INKSCAPE_EXECUTEABLE || "inkscape") +
-                    " '" +
-                    file.path +
-                    "' " +
-                    "--export-area-page --batch-process --export-type=pdf" +
-                    " " +
-                    `--export-filename='${path.join(
-                        filePath.dir,
-                        filePath.name
-                    )}.pdf'`,
-                (err, stdout, stderr) => {
-                    console.log("STDERR: ", stderr);
-                }
-            );
-            proc.on("exit", () => cb(null, file));
-        })
-    ); */
 }
 
 function clean() {
