@@ -5,10 +5,11 @@ const path = require("path");
 const { src, dest, series } = require("gulp");
 const replace = require("gulp-replace");
 const rename = require("gulp-rename");
-const through2 = require("through2");
 const es = require("event-stream");
 const csv = require("csv-parser");
-const PromisePool = require('es6-promise-pool')
+const PromisePool = require("es6-promise-pool");
+const which = require("which");
+const { throws } = require("assert");
 require("dotenv").config();
 
 // Config here
@@ -51,6 +52,17 @@ function replaceTemplate() {
 }
 
 function SVGtoPDF() {
+    let inkscapeExecuteable =
+        process.env.INKSCAPE_EXECUTEABLE ||
+        (fs.existsSync("C:\\Program Files\\Inkscape\\bin\\inkscape.com") &&
+            "C:\\Program Files\\Inkscape\\bin\\inkscape.com") ||
+        which.sync("inkscape", { nothrow: true });
+
+    if (!inkscapeExecuteable)
+        throw new Error(
+            "not found: inkscape. Please specify INKSCAPE_EXECUTEABLE environment variable."
+        );
+
     return new Promise((resolve, reject) => {
         const cpuCount = require("os").cpus().length;
         let files = fs
@@ -60,26 +72,24 @@ function SVGtoPDF() {
 
         const convert = (filePath) =>
             new Promise((resolve, reject) => {
-                const proc = spawn(
-                    (process.env.INKSCAPE_EXECUTEABLE || "inkscape"),
-                    [
-                        filePath,
-                        "--export-area-page",
-                        "--export-type=pdf",
-                        `--export-filename=${path.join(
-                            path.parse(filePath).dir,
-                            path.parse(filePath).name
-                        )}`,
-                    ]
-                );
+                const proc = spawn(inkscapeExecuteable, [
+                    filePath,
+                    "--export-area-page",
+                    "--export-type=pdf",
+                    `--export-filename=${path.join(
+                        path.parse(filePath).dir,
+                        path.parse(filePath).name
+                    )}`,
+                ]);
                 proc.on("close", () => resolve());
-                proc.stdout.on('data', (data) => {
+
+                proc.stdout.on("data", (data) => {
                     console.log(`stdout: ${data}`);
-                  });
-                  
-                  proc.stderr.on('data', (data) => {
+                });
+
+                proc.stderr.on("data", (data) => {
                     console.error(`stderr: ${data}`);
-                  });
+                });
             });
 
         const promiseProducer = () => {
@@ -90,7 +100,9 @@ function SVGtoPDF() {
         const pool = new PromisePool(promiseProducer, cpuCount);
         const poolPromise = pool.start();
 
-        poolPromise.then(() => {resolve()});
+        poolPromise.then(() => {
+            resolve();
+        });
     });
 }
 
