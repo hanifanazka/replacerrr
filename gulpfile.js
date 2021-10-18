@@ -8,6 +8,7 @@ const rename = require("gulp-rename");
 const through2 = require("through2");
 const es = require("event-stream");
 const csv = require("csv-parser");
+const PromisePool = require('es6-promise-pool')
 require("dotenv").config();
 
 // Config here
@@ -50,7 +51,45 @@ function replaceTemplate() {
 }
 
 function SVGtoPDF() {
-    return src("dist/*.svg").pipe(
+    return new Promise((resolve, reject) => {
+        const cpuCount = require("os").cpus().length;
+        let files = fs
+            .readdirSync("dist")
+            .filter((f) => path.extname(f) == ".svg")
+            .map((f) => path.resolve("dist", f));
+
+        const convert = (filePath) =>
+            new Promise((resolve, reject) => {
+                const proc = exec(
+                    (process.env.INKSCAPE_EXECUTEABLE || "inkscape") +
+                        " '" +
+                        filePath +
+                        "' " +
+                        "--export-area-page --batch-process --export-type=pdf" +
+                        " " +
+                        `--export-filename='${path.join(
+                            path.parse(filePath).dir,
+                            path.parse(filePath).name
+                        )}.pdf'`,
+                    (err, stdout, stderr) => {
+                        console.log("STDERR: ", stderr);
+                    }
+                );
+                proc.on("exit", () => resolve());
+            });
+
+        const promiseProducer = () => {
+            const currentJob = files.shift();
+            return currentJob ? convert(currentJob) : null;
+        };
+
+        const pool = new PromisePool(promiseProducer, cpuCount);
+        const poolPromise = pool.start();
+
+        poolPromise.then(() => {resolve()});
+    });
+/* 
+    src("dist/*.svg").pipe(
         through2.obj((file, enc, cb) => {
             const filePath = path.parse(file.path);
             const proc = exec(
@@ -70,7 +109,7 @@ function SVGtoPDF() {
             );
             proc.on("exit", () => cb(null, file));
         })
-    );
+    ); */
 }
 
 function clean() {
